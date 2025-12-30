@@ -1,52 +1,73 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>엑셀 생성</title>
+    <meta charset="UTF-8">
+    <title>바코드 엑셀 생성기</title>
 </head>
 <body>
 
 <h2>바코드 엑셀 생성</h2>
 
+<label>품명</label><br>
+<input type="text" id="name"><br><br>
+
+<label>소비기한</label><br>
+<input type="text" id="exp"><br><br>
+
+<label>수량</label><br>
+<input type="text" id="qty"><br><br>
+
+<label>바코드 생성 수량</label><br>
+<input type="number" id="barcode_qty" value="1" min="1"><br><br>
+
 <button onclick="createExcel()">엑셀 생성</button>
 
 <script>
-function createExcel() {
+async function createExcel() {
+    try {
+        const response = await fetch(
+            "https://ourboxosan-barcode-excel.onrender.com/create_excel",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name: document.getElementById("name").value,
+                    exp: document.getElementById("exp").value,
+                    qty: document.getElementById("qty").value,
+                    barcode_qty: document.getElementById("barcode_qty").value
+                })
+            }
+        );
 
-  // 🔴 여기에 Render 서버 주소를 정확히 넣어야 합니다
-  fetch("https://ourboxosan-barcode-excel.onrender.com/create_excel", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      name: "상품명",
-      exp: "2025-12-31",
-      qty: "10개",
-      barcode_qty: 1
-    })
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error("서버 오류");
+        if (!response.ok) {
+            alert("엑셀 생성 실패");
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "바코드_라벨.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+    } catch (e) {
+        alert("파일 생성 실패 (failed to fetch)");
+        console.error(e);
     }
-    return response.blob();
-  })
-  .then(blob => {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "바코드_라벨.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  })
-  .catch(err => {
-    alert("엑셀 생성 실패: " + err.message);
-  });
 }
 </script>
 
 </body>
 </html>
+
+
+</body>
+</html>
+
 
