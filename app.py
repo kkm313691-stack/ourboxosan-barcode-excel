@@ -1,82 +1,124 @@
-from flask import Flask, request, send_file, jsonify
-import datetime
 import os
+import datetime
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.drawing.image import Image
+
 import barcode
 from barcode.writer import ImageWriter
 
+# --------------------------
+# Flask 앱 생성 + CORS 적용
+# --------------------------
 app = Flask(__name__)
+CORS(app)  # ★ GitHub Pages → Render 허용 핵심 코드
 
+# --------------------------
+# 서버 상태 확인용
+# --------------------------
+@app.route("/")
+def health():
+    return jsonify({"status": "ok"})
+
+# --------------------------
+# 엑셀 생성 API
+# --------------------------
 @app.route("/create_excel", methods=["POST"])
 def create_excel():
-    data = request.json
+    try:
+        data = request.json
 
-    name = data.get("name", "")
-    exp = data.get("exp", "")
-    qty_info = data.get("qty", "")
-    qty_generate = int(data.get("barcode_qty", 1))
+        name = data.get("name", "")
+        exp = data.get("exp", "")
+        qty_info = data.get("qty", "")
+        qty_generate = int(data.get("barcode_qty", 1))
 
-    today_prefix = datetime.datetime.now().strftime("%Y%m%d")
-    filename = "barcode_label.xlsx"
+        today_prefix = datetime.datetime.now().strftime("%Y%m%d")
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "바코드 라벨"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "바코드 라벨"
 
-    ws.column_dimensions['A'].width = 30
-    ws.column_dimensions['B'].width = 140
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 140
 
-    a_font = Font(size=40, bold=True)
-    a_align = Alignment(horizontal="center", vertical="center")
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
+        a_font = Font(size=40, bold=True)
+        a_align = Alignment(horizontal="center", vertical="center")
 
-    current_row = 1
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
 
-    for i in range(1, qty_generate + 1):
-        barcode_number = f"{today_prefix}{i:04d}"
+        current_row = 1
 
-        for r in range(current_row, current_row + 4):
-            ws.row_dimensions[r].height = 180
+        for i in range(1, qty_generate + 1):
+            barcode_number = f"{today_prefix}{i:04d}"
 
-        labels = ["품명", "소비기한", "수량", "바코드"]
-        values = [name, exp, qty_info, barcode_number]
+            for r in range(current_row, current_row + 4):
+                ws.row_dimensions[r].height = 180
 
-        for idx in range(4):
-            ws[f"A{current_row+idx}"] = labels[idx]
-            ws[f"B{current_row+idx}"] = values[idx]
+            ws[f"A{current_row}"] = "품명"
+            ws[f"A{current_row+1}"] = "소비기한"
+            ws[f"A{current_row+2}"] = "수량"
+            ws[f"A{current_row+3}"] = "바코드"
 
-            ws[f"A{current_row+idx}"].font = a_font
-            ws[f"A{current_row+idx}"].alignment = a_align
-            ws[f"A{current_row+idx}"].border = thin_border
-            ws[f"B{current_row+idx}"].border = thin_border
+            for r in range(current_row, current_row + 4):
+                ws[f"A{r}"].font = a_font
+                ws[f"A{r}"].alignment = a_align
+                ws[f"A{r}"].border = thin_border
 
-        barcode_class = barcode.get_barcode_class("code128")
-        barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
-        barcode_path = f"barcode_{i}"
-        barcode_obj.save(barcode_path)
+            ws[f"B{current_row}"] = name
+            ws[f"B{current_row+1}"] = exp
+            ws[f"B{current_row+2}"] = qty_info
+            ws[f"B{current_row+3}"] = barcode_number
 
-        img = Image(f"{barcode_path}.png")
-        img.width = 600
-        img.height = 150
-        ws.add_image(img, f"B{current_row+3}")
+            for r in range(current_row, current_row + 4):
+                ws[f"B{r}"].border = thin_border
 
-        current_row += 4
+            # 바코드 이미지 생성
+            barcode_path = f"barcode_{i}.png"
+            barcode_class = barcode.get_barcode_class("code128")
+            barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
+            barcode_obj.save(f"barcode_{i}")
 
-    wb.save(filename)
+            img = Image(barcode_path)
+            img.width = 600
+            img.height = 150
+            ws.add_image(img, f"B{current_row+3}")
 
-    return send_file(
-        filename,
-        as_attachment=True,
-        download_name="바코드_라벨.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+            current_row += 4
+
+        file_path = "바코드_라벨.xlsx"
+        wb.save(file_path)
+
+        # 임시 바코드 이미지 삭제
+        for i in range(1, qty_generate + 1):
+            try:
+                os.remove(f"barcode_{i}.png")
+            except:
+                pass
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name="바코드_라벨.xlsx"
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# --------------------------
+# Render 실행 진입점
+# --------------------------
+if __name__ == "__main__":
+    app.run()
 
 
 @app.route("/")
