@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>엑셀 생성</title>
+</head>
+<body>
+
+<h2>바코드 엑셀 생성</h2>
+
+<button onclick="createExcel()">엑셀 생성</button>
+
+<script>
+function createExcel() {
+
+  // 🔴 여기에 Render 서버 주소를 정확히 넣어야 합니다
+  fetch("https://barcode-excel-api.onrender.com/create_excel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: "상품명",
+      exp: "2025-12-31",
+      qty: "10개",
+      barcode_qty: 1
+    })
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("서버 오류");
+    }
+    return response.blob();
+  })
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "바코드_라벨.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  })
+  .catch(err => {
+    alert("엑셀 생성 실패: " + err.message);
+  });
+}
+</script>
+
+</body>
+</html>
