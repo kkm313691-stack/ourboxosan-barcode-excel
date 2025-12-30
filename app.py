@@ -1,6 +1,6 @@
 import os
 import datetime
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, make_response
 from flask_cors import CORS
 
 from openpyxl import Workbook
@@ -10,24 +10,36 @@ from openpyxl.drawing.image import Image
 import barcode
 from barcode.writer import ImageWriter
 
-# --------------------------
-# Flask 앱 생성 + CORS 적용
-# --------------------------
 app = Flask(__name__)
-CORS(app)  # ★ GitHub Pages → Render 허용 핵심 코드
+
+# ✅ CORS 완전 허용 (모든 origin, 모든 method)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True
+)
 
 # --------------------------
-# 서버 상태 확인용
+# Preflight(OPTIONS) 대응
 # --------------------------
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    return response
+
+
 @app.route("/")
 def health():
     return jsonify({"status": "ok"})
 
-# --------------------------
-# 엑셀 생성 API
-# --------------------------
-@app.route("/create_excel", methods=["POST"])
+
+@app.route("/create_excel", methods=["POST", "OPTIONS"])
 def create_excel():
+    if request.method == "OPTIONS":
+        return make_response("", 200)
+
     try:
         data = request.json
 
@@ -81,7 +93,6 @@ def create_excel():
             for r in range(current_row, current_row + 4):
                 ws[f"B{r}"].border = thin_border
 
-            # 바코드 이미지 생성
             barcode_path = f"barcode_{i}.png"
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
@@ -97,7 +108,6 @@ def create_excel():
         file_path = "바코드_라벨.xlsx"
         wb.save(file_path)
 
-        # 임시 바코드 이미지 삭제
         for i in range(1, qty_generate + 1):
             try:
                 os.remove(f"barcode_{i}.png")
@@ -112,15 +122,3 @@ def create_excel():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# --------------------------
-# Render 실행 진입점
-# --------------------------
-if __name__ == "__main__":
-    app.run()
-
-
-@app.route("/")
-def health():
-    return jsonify({"status": "ok"})
