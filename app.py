@@ -12,16 +12,9 @@ from barcode.writer import ImageWriter
 
 app = Flask(__name__)
 
-# ✅ CORS 완전 허용 (모든 origin, 모든 method)
-CORS(
-    app,
-    resources={r"/*": {"origins": "*"}},
-    supports_credentials=True
-)
+# CORS 완전 허용
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# --------------------------
-# Preflight(OPTIONS) 대응
-# --------------------------
 @app.after_request
 def after_request(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
@@ -54,65 +47,56 @@ def create_excel():
         ws = wb.active
         ws.title = "바코드 라벨"
 
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 140
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 140
 
         a_font = Font(size=40, bold=True)
         a_align = Alignment(horizontal="center", vertical="center")
-
-        thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
         )
 
-        current_row = 1
+        row = 1
 
         for i in range(1, qty_generate + 1):
             barcode_number = f"{today_prefix}{i:04d}"
 
-            for r in range(current_row, current_row + 4):
+            for r in range(row, row + 4):
                 ws.row_dimensions[r].height = 180
 
-            ws[f"A{current_row}"] = "품명"
-            ws[f"A{current_row+1}"] = "소비기한"
-            ws[f"A{current_row+2}"] = "수량"
-            ws[f"A{current_row+3}"] = "바코드"
+            labels = ["품명", "소비기한", "수량", "바코드"]
+            values = [name, exp, qty_info, barcode_number]
 
-            for r in range(current_row, current_row + 4):
-                ws[f"A{r}"].font = a_font
-                ws[f"A{r}"].alignment = a_align
-                ws[f"A{r}"].border = thin_border
+            for idx in range(4):
+                ws[f"A{row+idx}"] = labels[idx]
+                ws[f"B{row+idx}"] = values[idx]
 
-            ws[f"B{current_row}"] = name
-            ws[f"B{current_row+1}"] = exp
-            ws[f"B{current_row+2}"] = qty_info
-            ws[f"B{current_row+3}"] = barcode_number
+                ws[f"A{row+idx}"].font = a_font
+                ws[f"A{row+idx}"].alignment = a_align
 
-            for r in range(current_row, current_row + 4):
-                ws[f"B{r}"].border = thin_border
+                ws[f"A{row+idx}"].border = border
+                ws[f"B{row+idx}"].border = border
 
-            barcode_path = f"barcode_{i}.png"
+            # 바코드 이미지 생성
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
 
-            img = Image(barcode_path)
+            img = Image(f"barcode_{i}.png")
             img.width = 600
             img.height = 150
-            ws.add_image(img, f"B{current_row+3}")
+            ws.add_image(img, f"B{row+3}")
 
-            current_row += 4
+            row += 4
 
         file_path = "바코드_라벨.xlsx"
         wb.save(file_path)
 
         for i in range(1, qty_generate + 1):
-            try:
-                os.remove(f"barcode_{i}.png")
-            except:
-                pass
+            os.remove(f"barcode_{i}.png")
 
         return send_file(
             file_path,
