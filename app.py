@@ -54,7 +54,7 @@ def create_excel():
         label_font = Font(size=40, bold=True)
         label_align = Alignment(horizontal="center", vertical="center")
 
-        # B열 (입력값 → 100pt 굵게)
+        # B열 (입력값)
         value_font = Font(size=100, bold=True)
         value_align = Alignment(horizontal="center", vertical="center")
 
@@ -70,31 +70,34 @@ def create_excel():
         for i in range(1, qty_generate + 1):
             barcode_number = f"{today_prefix}{i:04d}"
 
+            # 행 높이
             for r in range(row, row + 4):
-                ws.row_dimensions[r].height = 180
+                ws.row_dimensions[r].height = 200
 
             labels = ["품명", "소비기한", "수량", "바코드"]
-            values = [name, exp, qty_info, barcode_number]
+            values = [name, exp, qty_info]
 
             for idx in range(4):
                 a_cell = ws[f"A{row+idx}"]
                 b_cell = ws[f"B{row+idx}"]
 
+                # A열
                 a_cell.value = labels[idx]
-                b_cell.value = values[idx]
-
                 a_cell.font = label_font
                 a_cell.alignment = label_align
+                a_cell.border = border
 
-                # 바코드 이미지는 텍스트 폰트 적용 제외
+                # B열
                 if labels[idx] != "바코드":
+                    b_cell.value = values[idx]
                     b_cell.font = value_font
                     b_cell.alignment = value_align
+                else:
+                    b_cell.value = ""  # ✅ 바코드 숫자 완전 차단
 
-                a_cell.border = border
                 b_cell.border = border
 
-            # 바코드 이미지 생성
+            # 바코드 이미지 생성 (숫자는 이미지용으로만 사용)
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
@@ -109,6 +112,7 @@ def create_excel():
         file_path = "바코드_라벨.xlsx"
         wb.save(file_path)
 
+        # 임시 바코드 이미지 삭제
         for i in range(1, qty_generate + 1):
             os.remove(f"barcode_{i}.png")
 
