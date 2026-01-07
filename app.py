@@ -54,8 +54,8 @@ def create_excel():
         label_font = Font(size=40, bold=True)
         label_align = Alignment(horizontal="center", vertical="center")
 
-        # B열 (입력값 → 80pt 굵게)
-        value_font = Font(size=80, bold=True)
+        # B열 (입력값 → 100pt 굵게)
+        value_font = Font(size=100, bold=True)
         value_align = Alignment(horizontal="center", vertical="center")
 
         border = Border(
