@@ -50,8 +50,14 @@ def create_excel():
         ws.column_dimensions["A"].width = 30
         ws.column_dimensions["B"].width = 140
 
-        a_font = Font(size=40, bold=True)
-        a_align = Alignment(horizontal="center", vertical="center")
+        # A열 (항목명)
+        label_font = Font(size=40, bold=True)
+        label_align = Alignment(horizontal="center", vertical="center")
+
+        # B열 (입력값 → 80pt 굵게)
+        value_font = Font(size=80, bold=True)
+        value_align = Alignment(horizontal="center", vertical="center")
+
         border = Border(
             left=Side(style="thin"),
             right=Side(style="thin"),
@@ -71,14 +77,22 @@ def create_excel():
             values = [name, exp, qty_info, barcode_number]
 
             for idx in range(4):
-                ws[f"A{row+idx}"] = labels[idx]
-                ws[f"B{row+idx}"] = values[idx]
+                a_cell = ws[f"A{row+idx}"]
+                b_cell = ws[f"B{row+idx}"]
 
-                ws[f"A{row+idx}"].font = a_font
-                ws[f"A{row+idx}"].alignment = a_align
+                a_cell.value = labels[idx]
+                b_cell.value = values[idx]
 
-                ws[f"A{row+idx}"].border = border
-                ws[f"B{row+idx}"].border = border
+                a_cell.font = label_font
+                a_cell.alignment = label_align
+
+                # 바코드 이미지는 텍스트 폰트 적용 제외
+                if labels[idx] != "바코드":
+                    b_cell.font = value_font
+                    b_cell.alignment = value_align
+
+                a_cell.border = border
+                b_cell.border = border
 
             # 바코드 이미지 생성
             barcode_class = barcode.get_barcode_class("code128")
@@ -106,3 +120,4 @@ def create_excel():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
