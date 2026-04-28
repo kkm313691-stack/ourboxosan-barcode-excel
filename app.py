@@ -34,7 +34,7 @@ def base(ws):
 
 
 # =========================
-# 일반 모드 (수정 금지)
+# 일반 모드 (변경 없음)
 # =========================
 @app.route("/create_excel_normal", methods=["POST"])
 def normal():
@@ -107,7 +107,7 @@ def normal():
 
 
 # =========================
-# 🔥 로트 모드 (요청 완전 반영)
+# 로트 모드 (요청 구조 유지)
 # =========================
 @app.route("/create_excel_lot", methods=["POST"])
 def lot():
@@ -123,9 +123,6 @@ def lot():
         wb = Workbook()
         ws = wb.active
 
-        # =========================
-        # 📐 기본 설정
-        # =========================
         ws.column_dimensions["A"].width = 25
         ws.column_dimensions["B"].width = 85
 
@@ -140,15 +137,9 @@ def lot():
 
             code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
-            # =========================
-            # 행 높이 160 고정
-            # =========================
             for r in range(row, row+6):
                 ws.row_dimensions[r].height = 160
 
-            # =========================
-            # 구조 (요청 그대로)
-            # =========================
             items = [
                 ("품명", name),
                 ("소비기한", mfg),
@@ -173,22 +164,14 @@ def lot():
                 else:
                     ws[f"B{r}"].value = ""
 
-            # =========================
-            # 바코드 생성
-            # =========================
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(code, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
 
             img = Image(f"barcode_{i}.png")
+            img.width = 615
+            img.height = 142
 
-            # =========================
-            # 📏 바코드 크기 (요청값)
-            # =========================
-            img.width = 615   # 16.26cm
-            img.height = 142  # 3.75cm
-
-            # B6 위치
             ws.add_image(img, f"B{row+5}")
 
             row += 7
