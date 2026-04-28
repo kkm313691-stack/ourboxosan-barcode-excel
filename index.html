@@ -43,6 +43,7 @@ button {
     border:none;
     border-radius:10px;
     margin-top:15px;
+    cursor:pointer;
 }
 
 .hidden { display:none; }
@@ -55,9 +56,9 @@ button {
 <h1>Ourbox 오산센터</h1>
 <h2>바코드 생성기</h2>
 
-<select id="mode" onchange="toggleMode()">
-<option value="normal">일반 바코드</option>
-<option value="lot">로트 바코드</option>
+<select id="mode">
+    <option value="normal">일반 바코드</option>
+    <option value="lot">로트 바코드</option>
 </select>
 
 <input id="name" placeholder="품명">
@@ -71,54 +72,81 @@ button {
 <input id="qty" placeholder="수량">
 <input id="barcode_qty" type="number" value="1" min="1">
 
-<button onclick="go()">엑셀 생성</button>
+<button id="createBtn">엑셀 생성</button>
 </div>
 
 <script>
+
+// ✅ 요소 안전하게 가져오기
+const modeEl = document.getElementById("mode");
+const nameEl = document.getElementById("name");
+const expEl = document.getElementById("exp");
+const mfgEl = document.getElementById("mfg");
+const lotEl = document.getElementById("lot");
+const qtyEl = document.getElementById("qty");
+const barcodeQtyEl = document.getElementById("barcode_qty");
+const lotFields = document.getElementById("lotFields");
+const btn = document.getElementById("createBtn");
+
+// ✅ 모드 변경 시 UI 처리
 function toggleMode(){
-    if(mode.value === "lot"){
+    if(modeEl.value === "lot"){
         lotFields.classList.remove("hidden");
     }else{
         lotFields.classList.add("hidden");
     }
 }
 
-async function go(){
+modeEl.addEventListener("change", toggleMode);
 
-    if(!barcode_qty.value || barcode_qty.value < 1){
+// ✅ 엑셀 생성
+btn.addEventListener("click", async () => {
+
+    if(!barcodeQtyEl.value || barcodeQtyEl.value < 1){
         alert("바코드 수량은 1 이상 입력해주세요");
         return;
     }
 
-    const res = await fetch("/create_excel",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            mode: mode.value,
-            name: name.value,
-            exp: exp.value,
-            mfg: mfg.value,
-            qty: qty.value,
-            lot: lot.value,
-            barcode_qty: barcode_qty.value
-        })
-    });
+    try {
+        const res = await fetch("/create_excel", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                mode: modeEl.value,
+                name: nameEl.value,
+                exp: expEl.value,
+                mfg: mfgEl.value,
+                qty: qtyEl.value,
+                lot: lotEl.value,
+                barcode_qty: barcodeQtyEl.value
+            })
+        });
 
-    if(!res.ok){
-        alert("엑셀 생성 실패");
-        return;
+        if (!res.ok) {
+            alert("엑셀 생성 실패");
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "barcode.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+    } catch (e) {
+        alert("서버 연결 실패");
+        console.error(e);
     }
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+});
 
-    const a=document.createElement("a");
-    a.href=url;
-    a.download="barcode.xlsx";
-    a.click();
-}
-
+// 초기 상태
 toggleMode();
+
 </script>
 
 </body>
