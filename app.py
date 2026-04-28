@@ -41,7 +41,7 @@ def create_excel():
         exp = data.get("exp", "")
         qty_info = data.get("qty", "")
 
-        # 🔥 일반모드에서는 강제 제거
+        # 🔥 일반모드에서는 값 제거
         if mode != "lot":
             mfg = ""
             lot = ""
@@ -108,7 +108,7 @@ def create_excel():
 
                     b_cell.border = border
 
-                # 바코드 이미지 (기존 그대로 B열)
+                # 바코드 (숫자 포함 기본 설정 유지)
                 barcode_class = barcode.get_barcode_class("code128")
                 barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
                 barcode_obj.save(f"barcode_{i}")
@@ -126,16 +126,16 @@ def create_excel():
                 ws[f"A{row}"].value = "품명"
                 ws[f"B{row}"].value = name
 
-                # 2행 (핵심)
+                # 2행
                 ws[f"A{row+1}"].value = "소비기한"
-                ws[f"B{row+1}"].value = mfg
+                ws[f"B{row+1}"].value = mfg  # 제조일자
 
                 # 3행
                 ws[f"A{row+2}"].value = "수량"
                 ws[f"B{row+2}"].value = qty_info
 
                 # 4행
-                ws[f"A{row+3}"].value = ""   # 텍스트 제거 (이미지용)
+                ws[f"A{row+3}"].value = ""
                 ws[f"B{row+3}"].value = lot
 
                 # 스타일 적용
@@ -151,7 +151,7 @@ def create_excel():
                     b_cell.alignment = value_align
                     b_cell.border = border
 
-                # 바코드 이미지 (A열)
+                # 바코드 (숫자 포함 유지)
                 barcode_class = barcode.get_barcode_class("code128")
                 barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
                 barcode_obj.save(f"barcode_{i}")
