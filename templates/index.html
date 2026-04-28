@@ -6,184 +6,90 @@
 
 <style>
 body {
-    font-family: "Malgun Gothic", Arial, sans-serif;
+    font-family: "Malgun Gothic";
     background: #f0f2f5;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 
-/* 카드 */
-.container {
-    background: white;
-    width: 520px;
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+.box {
+    background:white;
+    padding:40px;
+    width:500px;
+    border-radius:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
 }
 
-/* 타이틀 */
-.title {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.title h1 {
-    font-size: 30px;
-    margin: 0;
-}
-
-.title h2 {
-    font-size: 20px;
-    color: #666;
-    margin-top: 5px;
-}
-
-/* 입력 그룹 */
-.input-group {
-    margin-bottom: 15px;
-}
-
-label {
-    font-size: 16px;
-    font-weight: bold;
-    display: block;
-    margin-bottom: 5px;
-}
-
+h1 { text-align:center; }
 input, select {
-    width: 100%;
-    padding: 14px;
-    font-size: 18px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
+    width:100%;
+    padding:12px;
+    margin:5px 0;
+    font-size:18px;
 }
-
-/* 버튼 */
 button {
-    width: 100%;
-    padding: 16px;
-    font-size: 20px;
-    font-weight: bold;
-    background: #2c7be5;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    margin-top: 20px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-button:hover {
-    background: #1a5dc9;
-}
-
-/* 2열 레이아웃 */
-.row {
-    display: flex;
-    gap: 10px;
-}
-
-.row .input-group {
-    flex: 1;
+    width:100%;
+    padding:15px;
+    font-size:20px;
+    background:#2c7be5;
+    color:white;
+    border:none;
+    border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="box">
+<h1>Ourbox 오산센터</h1>
+<h2 style="text-align:center;">바코드 생성기</h2>
 
-    <div class="title">
-        <h1>Ourbox 오산센터</h1>
-        <h2>바코드 생성기</h2>
-    </div>
+<select id="mode">
+<option value="normal">일반</option>
+<option value="lot">로트</option>
+</select>
 
-    <div class="input-group">
-        <label>출력 방식</label>
-        <select id="mode">
-            <option value="normal">일반 바코드</option>
-            <option value="lot">로트 바코드</option>
-        </select>
-    </div>
+<input id="name" placeholder="품명">
+<input id="exp" placeholder="소비기한">
+<input id="mfg" placeholder="제조일자">
+<input id="qty" placeholder="수량">
+<input id="lot" placeholder="로트번호">
+<input id="barcode_qty" type="number" value="1">
 
-    <div class="input-group">
-        <label>품명</label>
-        <input type="text" id="name">
-    </div>
-
-    <div class="row">
-        <div class="input-group">
-            <label>소비기한</label>
-            <input type="text" id="exp">
-        </div>
-
-        <div class="input-group">
-            <label>제조일자</label>
-            <input type="text" id="mfg">
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="input-group">
-            <label>수량</label>
-            <input type="text" id="qty">
-        </div>
-
-        <div class="input-group">
-            <label>로트번호</label>
-            <input type="text" id="lot">
-        </div>
-    </div>
-
-    <div class="input-group">
-        <label>바코드 생성 수량</label>
-        <input type="number" id="barcode_qty" value="1" min="1">
-    </div>
-
-    <button onclick="createExcel()">엑셀 생성</button>
-
+<button onclick="go()">엑셀 생성</button>
 </div>
 
 <script>
-async function createExcel() {
-    try {
-        const res = await fetch("/create_excel", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                mode: document.getElementById("mode").value,
-                name: document.getElementById("name").value,
-                exp: document.getElementById("exp").value,
-                mfg: document.getElementById("mfg").value,
-                qty: document.getElementById("qty").value,
-                lot: document.getElementById("lot").value,
-                barcode_qty: document.getElementById("barcode_qty").value
-            })
-        });
+async function go(){
+    const res = await fetch("/create_excel",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            mode:mode.value,
+            name:name.value,
+            exp:exp.value,
+            mfg:mfg.value,
+            qty:qty.value,
+            lot:lot.value,
+            barcode_qty:barcode_qty.value
+        })
+    });
 
-        if (!res.ok) {
-            alert("엑셀 생성 실패");
-            return;
-        }
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "barcode.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-    } catch (e) {
-        alert("서버 연결 실패");
-        console.error(e);
+    if(!res.ok){
+        alert("엑셀 생성 실패");
+        return;
     }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="barcode.xlsx";
+    a.click();
 }
 </script>
 
