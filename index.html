@@ -72,12 +72,13 @@ button {
 <input id="qty" placeholder="수량">
 <input id="barcode_qty" type="number" value="1" min="1">
 
-<button id="createBtn">엑셀 생성</button>
+<!-- 🔥 핵심: type="button" -->
+<button type="button" id="createBtn">엑셀 생성</button>
 </div>
 
 <script>
 
-// ✅ 요소 안전하게 가져오기
+// 요소 가져오기 (안전 방식)
 const modeEl = document.getElementById("mode");
 const nameEl = document.getElementById("name");
 const expEl = document.getElementById("exp");
@@ -88,7 +89,7 @@ const barcodeQtyEl = document.getElementById("barcode_qty");
 const lotFields = document.getElementById("lotFields");
 const btn = document.getElementById("createBtn");
 
-// ✅ 모드 변경 시 UI 처리
+// 모드 변경 UI
 function toggleMode(){
     if(modeEl.value === "lot"){
         lotFields.classList.remove("hidden");
@@ -99,8 +100,9 @@ function toggleMode(){
 
 modeEl.addEventListener("change", toggleMode);
 
-// ✅ 엑셀 생성
-btn.addEventListener("click", async () => {
+// 엑셀 생성
+btn.addEventListener("click", async (e) => {
+    e.preventDefault(); // 🔥 중요
 
     if(!barcodeQtyEl.value || barcodeQtyEl.value < 1){
         alert("바코드 수량은 1 이상 입력해주세요");
@@ -123,7 +125,7 @@ btn.addEventListener("click", async () => {
         });
 
         if (!res.ok) {
-            alert("엑셀 생성 실패");
+            alert("엑셀 생성 실패 (서버 오류)");
             return;
         }
 
@@ -137,14 +139,13 @@ btn.addEventListener("click", async () => {
         a.click();
         a.remove();
 
-    } catch (e) {
+    } catch (err) {
         alert("서버 연결 실패");
-        console.error(e);
+        console.error(err);
     }
-
 });
 
-// 초기 상태
+// 초기 UI 설정
 toggleMode();
 
 </script>
