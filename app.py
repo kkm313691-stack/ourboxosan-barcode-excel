@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-def base_style(ws):
+def base(ws):
     ws.column_dimensions["A"].width = 30
     ws.column_dimensions["B"].width = 140
 
@@ -34,7 +34,7 @@ def base_style(ws):
 
 
 # =========================
-# ✅ 일반 바코드 (절대 수정 금지)
+# 일반 모드
 # =========================
 @app.route("/create_excel_normal", methods=["POST"])
 def normal():
@@ -49,11 +49,12 @@ def normal():
         wb = Workbook()
         ws = wb.active
 
-        label_font, value_font, align, border = base_style(ws)
+        label_font, value_font, align, border = base(ws)
 
         row = 1
 
         for i in range(count):
+
             code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
             for r in range(row, row+4):
@@ -87,6 +88,7 @@ def normal():
             img = Image(f"barcode_{i}.png")
             img.width = 600
             img.height = 150
+
             ws.add_image(img, f"B{row+3}")
 
             row += 4
@@ -105,7 +107,7 @@ def normal():
 
 
 # =========================
-# ✅ 로트 바코드 (완전 고정)
+# 로트 모드 (핵심)
 # =========================
 @app.route("/create_excel_lot", methods=["POST"])
 def lot():
@@ -113,7 +115,7 @@ def lot():
         data = request.json
 
         name = data.get("name","")
-        mfg = data.get("mfg","")   # 제조일자
+        mfg = data.get("mfg","")
         qty = data.get("qty","")
         lot = data.get("lot","")
         count = int(data.get("barcode_qty") or 1)
@@ -121,7 +123,7 @@ def lot():
         wb = Workbook()
         ws = wb.active
 
-        label_font, value_font, align, border = base_style(ws)
+        label_font, value_font, align, border = base(ws)
 
         row = 1
 
@@ -129,13 +131,12 @@ def lot():
 
             code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
-            # 행 높이 고정
             ws.row_dimensions[row].height = 200
             ws.row_dimensions[row+1].height = 200
             ws.row_dimensions[row+2].height = 200
             ws.row_dimensions[row+3].height = 200
 
-            # 🔥 완전 고정 좌표
+            # 🔥 고정 레이아웃
             ws[f"A{row}"].value = "품명"
             ws[f"B{row}"].value = name
 
@@ -145,10 +146,9 @@ def lot():
             ws[f"A{row+2}"].value = "수량"
             ws[f"B{row+2}"].value = qty
 
-            ws[f"A{row+3}"].value = ""  # 이미지용
+            ws[f"A{row+3}"].value = ""
             ws[f"B{row+3}"].value = lot
 
-            # 스타일 적용
             for r in range(row, row+4):
                 a = ws[f"A{r}"]
                 b = ws[f"B{r}"]
@@ -161,7 +161,6 @@ def lot():
                 b.alignment = align
                 b.border = border
 
-            # 바코드 생성
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(code, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
@@ -170,7 +169,6 @@ def lot():
             img.width = 600
             img.height = 150
 
-            # 🔥 A4에만 넣는다
             ws.add_image(img, f"A{row+3}")
 
             row += 4
