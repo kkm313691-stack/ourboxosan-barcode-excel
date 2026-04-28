@@ -97,8 +97,10 @@ def normal():
         wb.save(file)
 
         for i in range(count):
-            try: os.remove(f"barcode_{i}.png")
-            except: pass
+            try:
+                os.remove(f"barcode_{i}.png")
+            except:
+                pass
 
         return send_file(file, as_attachment=True)
 
@@ -107,7 +109,7 @@ def normal():
 
 
 # =========================
-# 로트 모드 (요청 구조 유지)
+# 🔥 로트 모드 (테두리 전체 적용)
 # =========================
 @app.route("/create_excel_lot", methods=["POST"])
 def lot():
@@ -123,6 +125,9 @@ def lot():
         wb = Workbook()
         ws = wb.active
 
+        # =========================
+        # 기본 설정
+        # =========================
         ws.column_dimensions["A"].width = 25
         ws.column_dimensions["B"].width = 85
 
@@ -131,12 +136,21 @@ def lot():
 
         align = Alignment(horizontal="center", vertical="center")
 
+        # 🔥 모든 테두리 (핵심)
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
+
         row = 1
 
         for i in range(count):
 
             code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
+            # 행 높이
             for r in range(row, row+6):
                 ws.row_dimensions[r].height = 160
 
@@ -153,17 +167,28 @@ def lot():
 
                 r = row + idx
 
-                ws[f"A{r}"].value = label
-                ws[f"A{r}"].font = label_font
-                ws[f"A{r}"].alignment = align
+                # A열
+                a = ws[f"A{r}"]
+                a.value = label
+                a.font = label_font
+                a.alignment = align
+                a.border = border   # 🔥 전체 테두리 적용
+
+                # B열
+                b = ws[f"B{r}"]
 
                 if label != "바코드":
-                    ws[f"B{r}"].value = value
-                    ws[f"B{r}"].font = value_font
-                    ws[f"B{r}"].alignment = align
+                    b.value = value
+                    b.font = value_font
                 else:
-                    ws[f"B{r}"].value = ""
+                    b.value = ""
 
+                b.alignment = align
+                b.border = border   # 🔥 전체 테두리 적용
+
+            # =========================
+            # 바코드 생성
+            # =========================
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(code, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
