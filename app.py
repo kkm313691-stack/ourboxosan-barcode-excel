@@ -11,54 +11,36 @@ import barcode
 from barcode.writer import ImageWriter
 
 app = Flask(__name__)
+CORS(app)
 
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-@app.after_request
-def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-    response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    return response
-
-
-@app.route("/")
-def health():
-    return jsonify({"status": "ok"})
-
-
-@app.route("/create_excel", methods=["POST", "OPTIONS"])
+@app.route("/create_excel", methods=["POST","OPTIONS"])
 def create_excel():
     if request.method == "OPTIONS":
-        return make_response("", 200)
+        return make_response("",200)
 
     try:
         data = request.json
 
-        mode = data.get("mode", "normal")  # ✅ 모드 추가
-
-        name = data.get("name", "")
-        exp = data.get("exp", "")
-        mfg = data.get("mfg", "")
-        lot = data.get("lot", "")
-        qty_info = data.get("qty", "")
-        qty_generate = int(data.get("barcode_qty") or 1)
-
-        today_prefix = datetime.datetime.now().strftime("%Y%m%d")
+        mode = data.get("mode","normal")
+        name = data.get("name","")
+        exp = data.get("exp","")
+        mfg = data.get("mfg","")
+        lot = data.get("lot","")
+        qty = data.get("qty","")
+        count = int(data.get("barcode_qty") or 1)
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "바코드 라벨"
 
-        # ✅ 기존 스타일 유지
+        # ✅ 열 너비 (먼저 설정)
         ws.column_dimensions["A"].width = 30
         ws.column_dimensions["B"].width = 140
 
+        # ✅ 스타일 정의
         label_font = Font(size=40, bold=True)
-        label_align = Alignment(horizontal="center", vertical="center")
-
         value_font = Font(size=100, bold=True)
-        value_align = Alignment(horizontal="center", vertical="center")
+
+        center = Alignment(horizontal="center", vertical="center")
 
         border = Border(
             left=Side(style="thin"),
@@ -69,73 +51,63 @@ def create_excel():
 
         row = 1
 
-        for i in range(1, qty_generate + 1):
-            barcode_number = f"{today_prefix}{i:04d}"
+        for i in range(count):
 
-            # 행 높이 유지
-            for r in range(row, row + 4):
+            code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
+
+            # ✅ 행 높이 먼저
+            for r in range(row, row+4):
                 ws.row_dimensions[r].height = 200
 
-            # =========================
-            # ✅ 모드별 레이아웃
-            # =========================
+            # ======================
+            # 값 먼저 세팅
+            # ======================
             if mode == "lot":
-                labels_A = ["품명", "소비기한", "수량", "바코드"]
-                values_B = [
-                    name,
-                    mfg,  # 제조일자
-                    qty_info,
-                    lot
+                data_map = [
+                    ("품명", name),
+                    (exp, mfg),      # 소비기한 / 제조일자
+                    ("수량", qty),
+                    ("바코드", lot)
                 ]
-                extra_B_row2 = exp  # 소비기한은 A2에 표시됨
-
             else:
-                labels_A = ["품명", "소비기한", "수량", "바코드"]
-                values_B = [
-                    name,
-                    exp,
-                    qty_info,
-                    ""
+                data_map = [
+                    ("품명", name),
+                    ("소비기한", exp),
+                    ("수량", qty),
+                    ("바코드", "")
                 ]
 
-            for idx in range(4):
+            # ======================
+            # 값 + 스타일 한번에 적용
+            # ======================
+            for idx, (a_val, b_val) in enumerate(data_map):
                 a_cell = ws[f"A{row+idx}"]
                 b_cell = ws[f"B{row+idx}"]
 
-                # A열
-                a_cell.value = labels_A[idx]
+                # 값
+                a_cell.value = a_val
+                b_cell.value = b_val
+
+                # 스타일 (무조건 적용)
                 a_cell.font = label_font
-                a_cell.alignment = label_align
+                a_cell.alignment = center
                 a_cell.border = border
 
-                # B열
-                if labels_A[idx] != "바코드":
-                    if mode == "lot" and idx == 1:
-                        # 소비기한 / 제조일자 분리
-                        b_cell.value = mfg
-                        a_cell.value = exp
-                    else:
-                        b_cell.value = values_B[idx]
-
-                    b_cell.font = value_font
-                    b_cell.alignment = value_align
-                else:
-                    b_cell.value = values_B[idx]
-
+                b_cell.font = value_font
+                b_cell.alignment = center
                 b_cell.border = border
 
-            # =========================
-            # 바코드 생성
-            # =========================
+            # ======================
+            # 바코드
+            # ======================
             barcode_class = barcode.get_barcode_class("code128")
-            barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
+            barcode_obj = barcode_class(code, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
 
             img = Image(f"barcode_{i}.png")
             img.width = 600
             img.height = 150
 
-            # ✅ 위치 (요구사항)
             if mode == "lot":
                 ws.add_image(img, f"A{row+3}")
             else:
@@ -143,24 +115,16 @@ def create_excel():
 
             row += 4
 
-        file_path = "바코드_라벨.xlsx"
-        wb.save(file_path)
+        file = "barcode.xlsx"
+        wb.save(file)
 
-        for i in range(1, qty_generate + 1):
+        for i in range(count):
             try:
                 os.remove(f"barcode_{i}.png")
             except:
                 pass
 
-        return send_file(
-            file_path,
-            as_attachment=True,
-            download_name="바코드_라벨.xlsx"
-        )
+        return send_file(file, as_attachment=True)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-if __name__ == "__main__":
-    app.run()
+        return jsonify({"error": str(e)}),500
