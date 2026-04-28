@@ -17,26 +17,37 @@ body {
 .box {
     background:white;
     padding:40px;
-    width:500px;
+    width:520px;
     border-radius:15px;
     box-shadow:0 10px 25px rgba(0,0,0,0.2);
 }
 
-h1 { text-align:center; }
+h1 { text-align:center; margin:0; }
+h2 { text-align:center; margin-bottom:20px; color:#666; }
+
 input, select {
     width:100%;
-    padding:12px;
-    margin:5px 0;
+    padding:14px;
+    margin:6px 0;
     font-size:18px;
+    border-radius:8px;
+    border:1px solid #ccc;
 }
+
 button {
     width:100%;
-    padding:15px;
+    padding:16px;
     font-size:20px;
     background:#2c7be5;
     color:white;
     border:none;
     border-radius:10px;
+    margin-top:15px;
+    cursor:pointer;
+}
+
+.hidden {
+    display:none;
 }
 </style>
 </head>
@@ -45,36 +56,86 @@ button {
 
 <div class="box">
 <h1>Ourbox 오산센터</h1>
-<h2 style="text-align:center;">바코드 생성기</h2>
+<h2>바코드 생성기</h2>
 
-<select id="mode">
-<option value="normal">일반</option>
-<option value="lot">로트</option>
+<select id="mode" onchange="toggleMode()">
+<option value="normal">일반 바코드</option>
+<option value="lot">로트 바코드</option>
 </select>
 
 <input id="name" placeholder="품명">
 <input id="exp" placeholder="소비기한">
-<input id="mfg" placeholder="제조일자">
+
+<!-- 로트 모드 전용 -->
+<div id="lotFields" class="hidden">
+    <input id="mfg" placeholder="제조일자">
+    <input id="lot" placeholder="로트번호">
+</div>
+
 <input id="qty" placeholder="수량">
-<input id="lot" placeholder="로트번호">
 <input id="barcode_qty" type="number" value="1">
 
 <button onclick="go()">엑셀 생성</button>
 </div>
 
 <script>
+
+// ✅ 모드에 따라 UI 변경
+function toggleMode(){
+    const mode = document.getElementById("mode").value;
+    const lotFields = document.getElementById("lotFields");
+
+    if(mode === "lot"){
+        lotFields.classList.remove("hidden");
+    }else{
+        lotFields.classList.add("hidden");
+    }
+}
+
+// ✅ 필수값 체크
+function validate(){
+    const mode = modeEl.value;
+
+    if(!name.value || !exp.value || !qty.value){
+        alert("필수값을 모두 입력해주세요");
+        return false;
+    }
+
+    if(mode === "lot"){
+        if(!mfg.value || !lot.value){
+            alert("로트모드는 제조일자 / 로트번호 필수입니다");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// 요소 shortcut
+const modeEl = document.getElementById("mode");
+const name = document.getElementById("name");
+const exp = document.getElementById("exp");
+const mfg = document.getElementById("mfg");
+const lot = document.getElementById("lot");
+const qty = document.getElementById("qty");
+const barcode_qty = document.getElementById("barcode_qty");
+
+// ✅ 엑셀 생성
 async function go(){
+
+    if(!validate()) return;
+
     const res = await fetch("/create_excel",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-            mode:mode.value,
-            name:name.value,
-            exp:exp.value,
-            mfg:mfg.value,
-            qty:qty.value,
-            lot:lot.value,
-            barcode_qty:barcode_qty.value
+            mode: modeEl.value,
+            name: name.value,
+            exp: exp.value,
+            mfg: mfg.value,
+            qty: qty.value,
+            lot: lot.value,
+            barcode_qty: barcode_qty.value
         })
     });
 
@@ -91,6 +152,10 @@ async function go(){
     a.download="barcode.xlsx";
     a.click();
 }
+
+// 초기 실행
+toggleMode();
+
 </script>
 
 </body>
