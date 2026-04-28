@@ -2,81 +2,50 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>OURBOX 오산센터 - 바코드 생성기</title>
+<title>OURBOX 바코드 생성기</title>
 
 <style>
 body {
-    font-family: "Malgun Gothic", Arial;
-    background-color: #f5f5f5;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
+    font-family: "Malgun Gothic";
+    background:#f5f5f5;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 
 .container {
-    background: white;
-    padding: 50px 60px;
-    border-radius: 16px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    text-align: center;
-    width: 600px;
-}
-
-h1 {
-    font-size: 36px;
-    margin-bottom: 10px;
-}
-
-h2 {
-    font-size: 26px;
-    margin-bottom: 30px;
-}
-
-label {
-    font-size: 20px;
-    font-weight: bold;
-    display: block;
-    margin-top: 18px;
+    background:white;
+    padding:40px;
+    border-radius:12px;
+    width:600px;
+    text-align:center;
 }
 
 input {
-    width: 100%;
-    font-size: 20px;
-    padding: 12px;
-    margin-top: 6px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    text-align: center;
-}
-
-.btn-group {
-    margin-top: 35px;
-    display: flex;
-    gap: 15px;
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    font-size:18px;
 }
 
 button {
-    flex: 1;
-    font-size: 22px;
-    padding: 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    color: white;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:18px;
+    color:white;
 }
 
-.normal {
-    background-color: #2c7be5;
-}
+.normal { background:#2c7be5; }
+.lot { background:#28a745; }
+.create { background:#ff9800; width:100%; margin-top:20px; }
 
-.lot {
-    background-color: #28a745;
-}
-
-button:hover {
-    opacity: 0.9;
+.btn-group {
+    display:flex;
+    gap:10px;
+    margin-top:20px;
 }
 </style>
 </head>
@@ -84,85 +53,78 @@ button:hover {
 <body>
 
 <div class="container">
-    <h1>OURBOX 오산센터</h1>
-    <h2>바코드 생성기</h2>
 
-    <label>품명</label>
-    <input type="text" id="name">
+<h2>OURBOX 바코드 생성기</h2>
 
-    <label>소비기한</label>
-    <input type="text" id="exp">
+<label>품명</label>
+<input id="name">
 
-    <!-- 🔥 로트 전용 영역 -->
-    <div id="lotFields" style="display:none;">
-        <label>제조일자</label>
-        <input type="text" id="mfg">
+<label>소비기한</label>
+<input id="exp">
 
-        <label>로트번호</label>
-        <input type="text" id="lot">
-    </div>
+<div id="lotFields" style="display:none;">
+<label>제조일자</label>
+<input id="mfg">
 
-    <label>수량</label>
-    <input type="text" id="qty">
+<label>로트번호</label>
+<input id="lot">
+</div>
 
-    <label>바코드 생성 수량</label>
-    <input type="number" id="barcode_qty" value="1" min="1">
+<label>수량</label>
+<input id="qty">
 
-    <div class="btn-group">
-        <button class="normal" onclick="createNormal()">일반 바코드</button>
-        <button class="lot" onclick="createLot()">로트 바코드</button>
-    </div>
+<label>바코드 수량</label>
+<input id="barcode_qty" type="number" value="1">
+
+<div class="btn-group">
+    <button class="normal" onclick="selectMode('normal')">일반 바코드</button>
+    <button class="lot" onclick="selectMode('lot')">로트 바코드</button>
+</div>
+
+<button class="create" onclick="createExcel()">엑셀 생성</button>
+
 </div>
 
 <script>
 const BASE_URL = "https://ourboxosan-barcode-excel.onrender.com";
 
-// 일반
-async function createNormal(){
-    document.getElementById("lotFields").style.display = "none";
-    await send("/create_excel_normal");
+let mode = "normal";
+
+function selectMode(m){
+    mode = m;
+
+    document.getElementById("lotFields").style.display =
+        m === "lot" ? "block" : "none";
+
+    alert(m === "lot" ? "로트 모드 선택됨" : "일반 모드 선택됨");
 }
 
-// 로트
-async function createLot(){
-    document.getElementById("lotFields").style.display = "block";
-    await send("/create_excel_lot");
-}
+async function createExcel(){
 
-async function send(url){
-    try{
-        const res = await fetch(BASE_URL + url,{
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({
-                name: document.getElementById("name").value,
-                exp: document.getElementById("exp").value,
-                mfg: document.getElementById("mfg")?.value || "",
-                lot: document.getElementById("lot")?.value || "",
-                qty: document.getElementById("qty").value,
-                barcode_qty: document.getElementById("barcode_qty").value
-            })
-        });
+    const url = mode === "lot"
+        ? "/create_excel_lot"
+        : "/create_excel_normal";
 
-        if(!res.ok){
-            alert("엑셀 생성 실패");
-            return;
-        }
+    const res = await fetch(BASE_URL + url,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+            name: document.getElementById("name").value,
+            exp: document.getElementById("exp").value,
+            mfg: document.getElementById("mfg")?.value || "",
+            lot: document.getElementById("lot")?.value || "",
+            qty: document.getElementById("qty").value,
+            barcode_qty: document.getElementById("barcode_qty").value
+        })
+    });
 
-        const blob = await res.blob();
-        const urlObj = window.URL.createObjectURL(blob);
+    const blob = await res.blob();
+    const urlObj = window.URL.createObjectURL(blob);
 
-        const a = document.createElement("a");
-        a.href = urlObj;
-        a.download = "barcode.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-    }catch(e){
-        alert("서버 오류");
-        console.error(e);
-    }
+    const a = document.createElement("a");
+    a.href = urlObj;
+    a.download = "barcode.xlsx";
+    a.click();
 }
 </script>
 
