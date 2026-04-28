@@ -1,7 +1,7 @@
 import os
 import uuid
 import datetime
-from flask import Flask, request, send_file, jsonify, render_template
+from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 
 from openpyxl import Workbook
@@ -10,25 +10,20 @@ from openpyxl.drawing.image import Image
 import barcode
 from barcode.writer import ImageWriter
 
-# ✅ templates 경로 강제 지정 (Render 안정화)
-app = Flask(
-    __name__,
-    template_folder=os.path.join(os.getcwd(), "templates")
-)
-
+app = Flask(__name__)
 CORS(app)
 
 
 # =========================
-# ✅ 메인 UI (중복 라우트 절대 금지)
+# ✅ UI (index.html 직접 반환)
 # =========================
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return send_file("index.html")
 
 
 # =========================
-# ✅ 헬스 체크 (경로 분리)
+# ✅ 서버 상태 체크
 # =========================
 @app.route("/health")
 def health():
@@ -85,7 +80,6 @@ def create_normal_excel(data):
 
         ws[f"A{row+3}"] = "바코드"
 
-        # 바코드 생성 (충돌 방지)
         filename = f"{uuid.uuid4().hex}.png"
         temp_files.append(filename)
 
@@ -93,6 +87,8 @@ def create_normal_excel(data):
             barcode.get("code128", code, writer=ImageWriter()).write(f)
 
         img = Image(filename)
+        img.width = 600
+        img.height = 150
         ws.add_image(img, f"B{row+3}")
 
         row += 4
@@ -100,7 +96,6 @@ def create_normal_excel(data):
     file = f"{uuid.uuid4().hex}.xlsx"
     wb.save(file)
 
-    # 임시 파일 삭제
     for f in temp_files:
         os.remove(f)
 
@@ -130,7 +125,7 @@ def create_lot_excel(data):
     for i in range(count):
         code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
-        # ✅ 레이아웃 (요구사항 정확 반영)
+        # ✔ 요청 레이아웃 정확 반영
         ws[f"A{row}"] = "품명"
         ws[f"B{row}"] = name
 
@@ -143,7 +138,6 @@ def create_lot_excel(data):
         ws[f"A{row+3}"] = "바코드"
         ws[f"B{row+3}"] = lot
 
-        # 바코드 생성
         filename = f"{uuid.uuid4().hex}.png"
         temp_files.append(filename)
 
@@ -151,6 +145,8 @@ def create_lot_excel(data):
             barcode.get("code128", code, writer=ImageWriter()).write(f)
 
         img = Image(filename)
+        img.width = 600
+        img.height = 140
         ws.add_image(img, f"A{row+3}")
 
         row += 4
@@ -165,7 +161,7 @@ def create_lot_excel(data):
 
 
 # =========================
-# ✅ 실행
+# 실행
 # =========================
 if __name__ == "__main__":
     app.run()
