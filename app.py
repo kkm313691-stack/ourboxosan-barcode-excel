@@ -15,7 +15,7 @@ CORS(app)
 
 
 # =========================
-# ✅ UI (index.html 직접 반환)
+# UI
 # =========================
 @app.route("/")
 def index():
@@ -23,15 +23,7 @@ def index():
 
 
 # =========================
-# ✅ 서버 상태 체크
-# =========================
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
-
-
-# =========================
-# ✅ 엑셀 생성 API
+# API
 # =========================
 @app.route("/create_excel", methods=["POST"])
 def create_excel():
@@ -49,7 +41,7 @@ def create_excel():
 
 
 # =========================
-# ✅ 일반 모드
+# 일반 모드
 # =========================
 def create_normal_excel(data):
     name = data.get("name", "")
@@ -103,7 +95,7 @@ def create_normal_excel(data):
 
 
 # =========================
-# ✅ 로트 모드
+# 로트 모드
 # =========================
 def create_lot_excel(data):
     name = data.get("name", "")
@@ -125,7 +117,6 @@ def create_lot_excel(data):
     for i in range(count):
         code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
-        # ✔ 요청 레이아웃 정확 반영
         ws[f"A{row}"] = "품명"
         ws[f"B{row}"] = name
 
@@ -160,8 +151,5 @@ def create_lot_excel(data):
     return send_file(file, as_attachment=True, download_name="lot_barcode.xlsx")
 
 
-# =========================
-# 실행
-# =========================
 if __name__ == "__main__":
     app.run()
