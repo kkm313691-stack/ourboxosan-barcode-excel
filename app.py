@@ -1,96 +1,166 @@
 import os
-import uuid
 import datetime
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, make_response
 from flask_cors import CORS
 
 from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.drawing.image import Image
 
 import barcode
 from barcode.writer import ImageWriter
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    return response
+
 
 @app.route("/")
-def home():
-    return "API SERVER RUNNING"
-
-@app.route("/health")
 def health():
     return jsonify({"status": "ok"})
 
 
-@app.route("/create_excel", methods=["POST"])
+@app.route("/create_excel", methods=["POST", "OPTIONS"])
 def create_excel():
+    if request.method == "OPTIONS":
+        return make_response("", 200)
+
     try:
         data = request.json
-        mode = data.get("mode", "normal")
+
+        mode = data.get("mode", "normal")  # ✅ 모드 추가
 
         name = data.get("name", "")
         exp = data.get("exp", "")
         mfg = data.get("mfg", "")
         lot = data.get("lot", "")
-        qty = data.get("qty", "")
-        count = int(data.get("barcode_qty") or 1)
+        qty_info = data.get("qty", "")
+        qty_generate = int(data.get("barcode_qty") or 1)
+
+        today_prefix = datetime.datetime.now().strftime("%Y%m%d")
 
         wb = Workbook()
         ws = wb.active
+        ws.title = "바코드 라벨"
+
+        # ✅ 기존 스타일 유지
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 140
+
+        label_font = Font(size=40, bold=True)
+        label_align = Alignment(horizontal="center", vertical="center")
+
+        value_font = Font(size=100, bold=True)
+        value_align = Alignment(horizontal="center", vertical="center")
+
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
 
         row = 1
-        temp_files = []
 
-        for i in range(count):
-            code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
+        for i in range(1, qty_generate + 1):
+            barcode_number = f"{today_prefix}{i:04d}"
 
+            # 행 높이 유지
+            for r in range(row, row + 4):
+                ws.row_dimensions[r].height = 200
+
+            # =========================
+            # ✅ 모드별 레이아웃
+            # =========================
             if mode == "lot":
-                ws[f"A{row}"] = "품명"
-                ws[f"B{row}"] = name
+                labels_A = ["품명", "소비기한", "수량", "바코드"]
+                values_B = [
+                    name,
+                    mfg,  # 제조일자
+                    qty_info,
+                    lot
+                ]
+                extra_B_row2 = exp  # 소비기한은 A2에 표시됨
 
-                ws[f"A{row+1}"] = f"소비기한\n{exp}"
-                ws[f"B{row+1}"] = f"제조일자\n{mfg}"
-
-                ws[f"A{row+2}"] = "수량"
-                ws[f"B{row+2}"] = qty
-
-                ws[f"A{row+3}"] = "바코드"
-                ws[f"B{row+3}"] = lot
             else:
-                ws[f"A{row}"] = "품명"
-                ws[f"B{row}"] = name
+                labels_A = ["품명", "소비기한", "수량", "바코드"]
+                values_B = [
+                    name,
+                    exp,
+                    qty_info,
+                    ""
+                ]
 
-                ws[f"A{row+1}"] = "소비기한"
-                ws[f"B{row+1}"] = exp
+            for idx in range(4):
+                a_cell = ws[f"A{row+idx}"]
+                b_cell = ws[f"B{row+idx}"]
 
-                ws[f"A{row+2}"] = "수량"
-                ws[f"B{row+2}"] = qty
+                # A열
+                a_cell.value = labels_A[idx]
+                a_cell.font = label_font
+                a_cell.alignment = label_align
+                a_cell.border = border
 
-                ws[f"A{row+3}"] = "바코드"
+                # B열
+                if labels_A[idx] != "바코드":
+                    if mode == "lot" and idx == 1:
+                        # 소비기한 / 제조일자 분리
+                        b_cell.value = mfg
+                        a_cell.value = exp
+                    else:
+                        b_cell.value = values_B[idx]
 
+                    b_cell.font = value_font
+                    b_cell.alignment = value_align
+                else:
+                    b_cell.value = values_B[idx]
+
+                b_cell.border = border
+
+            # =========================
             # 바코드 생성
-            filename = f"{uuid.uuid4().hex}"
+            # =========================
             barcode_class = barcode.get_barcode_class("code128")
-            barcode_obj = barcode_class(code, writer=ImageWriter())
-            barcode_obj.save(filename)
+            barcode_obj = barcode_class(barcode_number, writer=ImageWriter())
+            barcode_obj.save(f"barcode_{i}")
 
-            img = Image(f"{filename}.png")
-            ws.add_image(img, f"B{row+3}")
+            img = Image(f"barcode_{i}.png")
+            img.width = 600
+            img.height = 150
 
-            temp_files.append(f"{filename}.png")
+            # ✅ 위치 (요구사항)
+            if mode == "lot":
+                ws.add_image(img, f"A{row+3}")
+            else:
+                ws.add_image(img, f"B{row+3}")
 
             row += 4
 
-        file = f"{uuid.uuid4().hex}.xlsx"
-        wb.save(file)
+        file_path = "바코드_라벨.xlsx"
+        wb.save(file_path)
 
-        for f in temp_files:
+        for i in range(1, qty_generate + 1):
             try:
-                os.remove(f)
+                os.remove(f"barcode_{i}.png")
             except:
                 pass
 
-        return send_file(file, as_attachment=True, download_name="barcode.xlsx")
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name="바코드_라벨.xlsx"
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run()
