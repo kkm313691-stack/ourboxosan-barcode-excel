@@ -4,7 +4,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.drawing.image import Image
 
 import barcode
@@ -107,7 +107,7 @@ def normal():
 
 
 # =========================
-# 🔥 로트 모드 (완전 개선 버전)
+# 🔥 로트 모드 (요청 완전 반영)
 # =========================
 @app.route("/create_excel_lot", methods=["POST"])
 def lot():
@@ -123,21 +123,16 @@ def lot():
         wb = Workbook()
         ws = wb.active
 
-        # 스타일
-        title_font = Font(size=28, bold=True, color="FFFFFF")
-        label_font = Font(size=40, bold=True)
-        value_font = Font(size=90, bold=True)
+        # =========================
+        # 📐 기본 설정
+        # =========================
+        ws.column_dimensions["A"].width = 25
+        ws.column_dimensions["B"].width = 85
+
+        label_font = Font(size=25, bold=True)
+        value_font = Font(size=80, bold=True)
 
         align = Alignment(horizontal="center", vertical="center")
-
-        title_fill = PatternFill("solid", fgColor="FF0000")
-
-        border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin")
-        )
 
         row = 1
 
@@ -145,68 +140,58 @@ def lot():
 
             code = datetime.datetime.now().strftime("%Y%m%d") + f"{i:04d}"
 
-            # 높이
-            for r in range(row, row+10):
-                ws.row_dimensions[r].height = 140
+            # =========================
+            # 행 높이 160 고정
+            # =========================
+            for r in range(row, row+6):
+                ws.row_dimensions[r].height = 160
 
             # =========================
-            # 🔴 타이틀 (병합)
-            # =========================
-            ws.merge_cells(f"A{row}:B{row}")
-            ws[f"A{row}"].value = "🔴 LOT 관리 라벨"
-            ws[f"A{row}"].font = title_font
-            ws[f"A{row}"].fill = title_fill
-            ws[f"A{row}"].alignment = align
-
-            # =========================
-            # 라벨 구조 (요청 그대로)
+            # 구조 (요청 그대로)
             # =========================
             items = [
                 ("품명", name),
                 ("소비기한", mfg),
+                ("제조일자", mfg),
                 ("수량", qty),
                 ("로트번호", lot),
-                ("제조일자", mfg)
+                ("바코드", code)
             ]
-
-            start = row + 1
 
             for idx, (label, value) in enumerate(items):
 
-                r = start + idx
+                r = row + idx
 
                 ws[f"A{r}"].value = label
                 ws[f"A{r}"].font = label_font
                 ws[f"A{r}"].alignment = align
-                ws[f"A{r}"].border = border
 
-                ws[f"B{r}"].value = value
-                ws[f"B{r}"].font = value_font
-                ws[f"B{r}"].alignment = align
-                ws[f"B{r}"].border = border
+                if label != "바코드":
+                    ws[f"B{r}"].value = value
+                    ws[f"B{r}"].font = value_font
+                    ws[f"B{r}"].alignment = align
+                else:
+                    ws[f"B{r}"].value = ""
 
             # =========================
-            # 바코드
+            # 바코드 생성
             # =========================
             barcode_class = barcode.get_barcode_class("code128")
             barcode_obj = barcode_class(code, writer=ImageWriter())
             barcode_obj.save(f"barcode_{i}")
 
             img = Image(f"barcode_{i}.png")
-            img.width = 900
-            img.height = 250
-
-            barcode_row = start + len(items) + 1
-            ws.add_image(img, f"A{barcode_row}")
 
             # =========================
-            # 구분선
+            # 📏 바코드 크기 (요청값)
             # =========================
-            ws.merge_cells(f"A{barcode_row+2}:B{barcode_row+2}")
-            ws[f"A{barcode_row+2}"].value = "━━━━━━━━━━━━━━"
-            ws[f"A{barcode_row+2}"].alignment = align
+            img.width = 615   # 16.26cm
+            img.height = 142  # 3.75cm
 
-            row = barcode_row + 4
+            # B6 위치
+            ws.add_image(img, f"B{row+5}")
+
+            row += 7
 
         file = "barcode.xlsx"
         wb.save(file)
