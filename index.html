@@ -72,13 +72,15 @@ button {
 <input id="qty" placeholder="수량">
 <input id="barcode_qty" type="number" value="1" min="1">
 
-<!-- 🔥 핵심: type="button" -->
 <button type="button" id="createBtn">엑셀 생성</button>
 </div>
 
 <script>
 
-// 요소 가져오기 (안전 방식)
+// 🔥 반드시 본인 Render 주소로 변경
+const API_URL = "https://ourboxosan-barcode-excel.onrender.com/create_excel";
+
+// 요소
 const modeEl = document.getElementById("mode");
 const nameEl = document.getElementById("name");
 const expEl = document.getElementById("exp");
@@ -89,7 +91,7 @@ const barcodeQtyEl = document.getElementById("barcode_qty");
 const lotFields = document.getElementById("lotFields");
 const btn = document.getElementById("createBtn");
 
-// 모드 변경 UI
+// UI
 function toggleMode(){
     if(modeEl.value === "lot"){
         lotFields.classList.remove("hidden");
@@ -100,9 +102,8 @@ function toggleMode(){
 
 modeEl.addEventListener("change", toggleMode);
 
-// 엑셀 생성
-btn.addEventListener("click", async (e) => {
-    e.preventDefault(); // 🔥 중요
+// 실행
+btn.addEventListener("click", async () => {
 
     if(!barcodeQtyEl.value || barcodeQtyEl.value < 1){
         alert("바코드 수량은 1 이상 입력해주세요");
@@ -110,7 +111,7 @@ btn.addEventListener("click", async (e) => {
     }
 
     try {
-        const res = await fetch("/create_excel", {
+        const res = await fetch(API_URL, {
             method: "POST",
             headers: {"Content-Type":"application/json"},
             body: JSON.stringify({
@@ -145,7 +146,6 @@ btn.addEventListener("click", async (e) => {
     }
 });
 
-// 초기 UI 설정
 toggleMode();
 
 </script>
