@@ -7,54 +7,44 @@
 <style>
 body {
     font-family: "Malgun Gothic";
-    background: #f0f2f5;
+    background-color: #f5f5f5;
     display:flex;
     justify-content:center;
     align-items:center;
     height:100vh;
 }
 
-.box {
+.container {
     background:white;
     padding:40px;
-    width:520px;
-    border-radius:15px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+    width:420px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
 }
-
-h1 { text-align:center; margin:0; }
-h2 { text-align:center; margin-bottom:20px; color:#666; }
 
 input, select {
     width:100%;
-    padding:14px;
-    margin:6px 0;
+    padding:10px;
+    margin-top:10px;
     font-size:18px;
-    border-radius:8px;
-    border:1px solid #ccc;
 }
 
 button {
+    margin-top:20px;
     width:100%;
-    padding:16px;
+    padding:12px;
     font-size:20px;
     background:#2c7be5;
     color:white;
     border:none;
-    border-radius:10px;
-    margin-top:15px;
-    cursor:pointer;
 }
-
-.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<div class="box">
-<h1>Ourbox 오산센터</h1>
-<h2>바코드 생성기</h2>
+<div class="container">
+<h2>Ourbox 오산센터 바코드 생성기</h2>
 
 <select id="mode">
     <option value="normal">일반 바코드</option>
@@ -63,91 +53,46 @@ button {
 
 <input id="name" placeholder="품명">
 <input id="exp" placeholder="소비기한">
-
-<div id="lotFields" class="hidden">
-    <input id="mfg" placeholder="제조일자">
-    <input id="lot" placeholder="로트번호">
-</div>
-
+<input id="mfg" placeholder="제조일자 (로트용)">
+<input id="lot" placeholder="로트번호 (로트용)">
 <input id="qty" placeholder="수량">
-<input id="barcode_qty" type="number" value="1" min="1">
+<input id="barcode_qty" type="number" value="1">
 
-<button type="button" id="createBtn">엑셀 생성</button>
+<button onclick="createExcel()">엑셀 생성</button>
 </div>
 
 <script>
+async function createExcel(){
 
-// 🔥 반드시 본인 Render 주소로 변경
-const API_URL = "https://ourboxosan-barcode-excel.onrender.com/create_excel";
+    const data = {
+        mode: document.getElementById("mode").value,
+        name: document.getElementById("name").value,
+        exp: document.getElementById("exp").value,
+        mfg: document.getElementById("mfg").value,
+        lot: document.getElementById("lot").value,
+        qty: document.getElementById("qty").value,
+        barcode_qty: document.getElementById("barcode_qty").value
+    };
 
-// 요소
-const modeEl = document.getElementById("mode");
-const nameEl = document.getElementById("name");
-const expEl = document.getElementById("exp");
-const mfgEl = document.getElementById("mfg");
-const lotEl = document.getElementById("lot");
-const qtyEl = document.getElementById("qty");
-const barcodeQtyEl = document.getElementById("barcode_qty");
-const lotFields = document.getElementById("lotFields");
-const btn = document.getElementById("createBtn");
+    const res = await fetch("https://ourboxosan-barcode-excel.onrender.com/create_excel",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(data)
+    });
 
-// UI
-function toggleMode(){
-    if(modeEl.value === "lot"){
-        lotFields.classList.remove("hidden");
-    }else{
-        lotFields.classList.add("hidden");
-    }
-}
-
-modeEl.addEventListener("change", toggleMode);
-
-// 실행
-btn.addEventListener("click", async () => {
-
-    if(!barcodeQtyEl.value || barcodeQtyEl.value < 1){
-        alert("바코드 수량은 1 이상 입력해주세요");
+    if(!res.ok){
+        alert("엑셀 생성 실패");
         return;
     }
 
-    try {
-        const res = await fetch(API_URL, {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({
-                mode: modeEl.value,
-                name: nameEl.value,
-                exp: expEl.value,
-                mfg: mfgEl.value,
-                qty: qtyEl.value,
-                lot: lotEl.value,
-                barcode_qty: barcodeQtyEl.value
-            })
-        });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
 
-        if (!res.ok) {
-            alert("엑셀 생성 실패 (서버 오류)");
-            return;
-        }
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "barcode.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-    } catch (err) {
-        alert("서버 연결 실패");
-        console.error(err);
-    }
-});
-
-toggleMode();
-
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="barcode.xlsx";
+    a.click();
+}
 </script>
 
 </body>
